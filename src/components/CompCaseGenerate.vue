@@ -115,7 +115,7 @@ export default {
       this.case_list.forEach(element => {
         result.push(JSON.stringify(element))
       });
-      this.$copyText(result.join("\n")).then((e)=>{
+      this.$copyText(result.join(",\n")).then((e)=>{
         this.$message('复制成功');
         }, (e)=>{
         alert('Can not copy')
