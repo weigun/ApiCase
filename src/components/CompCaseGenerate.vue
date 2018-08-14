@@ -43,7 +43,7 @@
     </el-container>
     <template v-if="shown">
       <el-dialog
-        title="导入JSON"
+        title="导入参数"
         :visible.sync="shown"
         width="50%"
         center>
@@ -121,22 +121,49 @@ export default {
         alert('Can not copy')
       })
     },
+    split_query(query_string) {  
+      var args = {}, // 保存参数数据的对象
+        items = query_string.length ? query_string.split("&") : [], // 取得每一个参数项,
+        item = null,
+        len = items.length;
+
+      for(var i = 0; i < len; i++) {
+        item = items[i].split("=");
+        var name = decodeURIComponent(item[0]),
+          value = decodeURIComponent(item[1]);
+        if(name) {
+          args[name] = value;
+        }
+      }
+      return args;
+    },
     on_import(){
       // {"body":{"username":"22222222222","loginType":"0"},"head":{}}
       console.log(utils.name)
       let _items = []
       if (this.text_json){
         console.log("text:",this.text_json)
-        let item = JSON.parse(this.text_json)
-        if (!utils.is_obj(item)) {
-          this.$message("JSON 格式不对")
-          return
+        try {
+          let item = JSON.parse(this.text_json)
+          if (!utils.is_obj(item)) {
+            this.$message("JSON 格式不对")
+            return
+          }
+          console.log("before:",item)
+          // _items = this.split_object(item)
+          // this.items = _items
+          this.case_list = []
+          this.handle_json(item)
+        } catch (error) {
+          // 这里应该是get参数的形式
+          let query = this.split_query(this.text_json)
+          console.log(query)
+          this.case_list = []
+          this.handle_json(query)
+
         }
-        console.log("before:",item)
-        // _items = this.split_object(item)
-        // this.items = _items
-        this.case_list = []
-        this.handle_json(item)
+        
+        
       }
       this.on_cancel()
     },
@@ -193,15 +220,14 @@ export default {
                   //取值的内容
                   console.log("enter",obj)
                   this.generate_case(obj,key,_k,_e)
-
                 }
-
-                
               }
-            }
-            
+            } 
           }
-          
+          else{
+            console.log("fuck",key,element)
+            this.generate_case(obj,"",key,element)
+          }
         }
       }
       
@@ -310,13 +336,23 @@ export default {
     },
     _build(raw_obj,parent_key,k,vals){
       for (const i in vals) {
-        let head = this.copy(raw_obj.head)
-        let body = this.copy(raw_obj.body)
-        let _case = {"payload" :{"head" : head,"body": body},"verify": {"code" : 200,"extra" : ""},"desc":""}
+        let _case = {}
+        if (raw_obj.hasOwnProperty("head")){
+          let head = this.copy(raw_obj.head)
+          let body = this.copy(raw_obj.body)
+          _case = {"payload" :{"head" : head,"body": body},"verify": {"code" : 200,"extra" : ""},"desc":""}
+        }
+        else{
+          _case = {"payload" :{"type":"url","data":this.copy(raw_obj)},"verify": {"code" : 200,"extra" : ""},"desc":""}
+        }
         console.log("hehe:",_case)
         _case.desc = `${k}-${vals[i].desc}`
-        console.log(parent_key,k,vals[i].val)
-        _case.payload[parent_key][k] = vals[i].val
+        if (raw_obj.hasOwnProperty("head")){
+          _case.payload[parent_key][k] = vals[i].val
+        }
+        else{
+          _case.payload["data"][k] = vals[i].val
+        }
         console.log(_case)
         this.case_list.push(_case) 
       }
